@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vertigo Logger - Stage 1 MVP</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌀 Vertigo Episode Logger</h1>
+            <p>Track and analyze your vertigo episodes with AI assistance</p>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab-btn active" onclick="showTab('log')">Log Episode</button>
+            <button class="tab-btn" onclick="showTab('history')">Episode History</button>
+            <button class="tab-btn" onclick="showTab('export')">Export Data</button>
+        </nav>
+
+        <!-- Log Episode Tab -->
+        <div id="log-tab" class="tab-content active">
+            <div class="card">
+                <h2>Log New Episode</h2>
+                <form id="episode-form">
+                    <div class="form-group">
+                        <label for="severity">Severity (1-5):</label>
+                        <select id="severity" required>
+                            <option value="">Select severity</option>
+                            <option value="1">1 - Very Mild</option>
+                            <option value="2">2 - Mild</option>
+                            <option value="3">3 - Moderate</option>
+                            <option value="4">4 - Severe</option>
+                            <option value="5">5 - Very Severe</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="duration">Duration (minutes):</label>
+                        <input type="number" id="duration" min="1" max="1440" placeholder="Duration in minutes">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="symptoms">Symptoms:</label>
+                        <div class="voice-input-container">
+                            <textarea id="symptoms" placeholder="Describe your symptoms..." rows="3"></textarea>
+                            <button type="button" id="voice-btn" class="voice-btn" title="Voice Input">🎤</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="triggers">Possible Triggers:</label>
+                        <input type="text" id="triggers" placeholder="What might have triggered this episode?">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="location">Location:</label>
+                        <input type="text" id="location" placeholder="Where did this occur?">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="activities">Activities Before:</label>
+                        <input type="text" id="activities" placeholder="What were you doing before?">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="medications">Medications Taken:</label>
+                        <input type="text" id="medications" placeholder="Any medications taken?">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="notes">Additional Notes:</label>
+                        <textarea id="notes" placeholder="Any additional notes..." rows="2"></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Log Episode</button>
+                        <button type="button" id="analyze-btn" class="btn-secondary">Get AI Analysis</button>
+                    </div>
+                </form>
+
+                <div id="ai-analysis" class="ai-analysis" style="display: none;">
+                    <h3>AI Analysis</h3>
+                    <div id="analysis-content"></div>
+                    <div id="recommendations"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Episode History Tab -->
+        <div id="history-tab" class="tab-content">
+            <div class="card">
+                <h2>Episode History</h2>
+                <div id="episodes-list">
+                    <p>Loading episodes...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Data Tab -->
+        <div id="export-tab" class="tab-content">
+            <div class="card">
+                <h2>Export Data</h2>
+                <p>Download your episode data for medical consultation</p>
+                <button id="export-csv" class="btn-primary">Download CSV</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
