@@ -1,12 +1,21 @@
 const { Pool } = require('pg');
 
-// Database connection
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
-});
+// Database connection with better error handling
+let pool;
+try {
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.DATABASE_URL?.includes('neon.tech') ? {
+      rejectUnauthorized: false,
+      require: true
+    } : false,
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+  });
+} catch (error) {
+  console.error('Database pool creation failed:', error);
+}
 
 // CORS headers
 const corsHeaders = {
@@ -34,6 +43,10 @@ exports.handler = async (event, context) => {
     switch (true) {
       case path === '/health' && method === 'GET':
         response = await handleHealth();
+        break;
+
+      case path === '/test-db' && method === 'GET':
+        response = await handleTestDB();
         break;
 
       case path === '/episodes' && method === 'GET':
@@ -104,16 +117,92 @@ async function handleHealth() {
   };
 }
 
-async function handleGetEpisodes() {
-  const client = await pool.connect();
+async function handleTestDB() {
+  if (!pool) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        error: 'Database pool not initialized',
+        env_set: !!process.env.DATABASE_URL,
+        env_preview: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 50) + '...' : 'not set'
+      }),
+    };
+  }
+
+  let client;
   try {
+    console.log('Testing database connection...');
+    client = await pool.connect();
+
+    // Test basic query
+    const result = await client.query('SELECT NOW() as current_time, version() as pg_version');
+
+    // Test if episodes table exists
+    const tableCheck = await client.query(`
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = 'episodes'
+    `);
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        status: 'Database connection successful',
+        current_time: result.rows[0].current_time,
+        pg_version: result.rows[0].pg_version,
+        episodes_table_exists: tableCheck.rows.length > 0,
+        env_configured: !!process.env.DATABASE_URL
+      }),
+    };
+  } catch (error) {
+    console.error('Database test error:', error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        error: 'Database connection test failed',
+        details: error.message,
+        code: error.code,
+        env_set: !!process.env.DATABASE_URL
+      }),
+    };
+  } finally {
+    if (client) client.release();
+  }
+}
+
+async function handleGetEpisodes() {
+  if (!pool) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Database pool not initialized' }),
+    };
+  }
+
+  let client;
+  try {
+    console.log('Attempting to connect to database...');
+    client = await pool.connect();
+    console.log('Database connected successfully');
+
     const result = await client.query('SELECT * FROM episodes ORDER BY timestamp DESC');
+    console.log(`Found ${result.rows.length} episodes`);
+
     return {
       statusCode: 200,
       body: JSON.stringify(result.rows),
     };
+  } catch (error) {
+    console.error('Database query error:', error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        error: 'Database query failed',
+        details: error.message,
+        code: error.code
+      }),
+    };
   } finally {
-    client.release();
+    if (client) client.release();
   }
 }
 
