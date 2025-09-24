@@ -1,0 +1,12 @@
+{
+  "name": "vertigo-logger",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "mkdir -p public && cp -r static/* public/",
+    "vercel-build": "mkdir -p public && cp -r static/* public/"
+  },
+  "dependencies": {
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {}
+}
