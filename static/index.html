@@ -3,8 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vertigo Logger - Stage 1 MVP</title>
+    <title>Vertigo Logger - Stage 2 Enhanced</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Vertigo Logger">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
@@ -15,6 +21,7 @@
 
         <nav class="tabs">
             <button class="tab-btn active" onclick="showTab('log')">Log Episode</button>
+            <button class="tab-btn" onclick="showTab('analytics')">Analytics Dashboard</button>
             <button class="tab-btn" onclick="showTab('history')">Episode History</button>
             <button class="tab-btn" onclick="showTab('export')">Export Data</button>
         </nav>
@@ -88,6 +95,62 @@
             </div>
         </div>
 
+        <!-- Analytics Dashboard Tab -->
+        <div id="analytics-tab" class="tab-content">
+            <div class="analytics-container">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Total Episodes</h3>
+                        <div class="stat-number" id="total-episodes">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Average Severity</h3>
+                        <div class="stat-number" id="avg-severity">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Average Duration</h3>
+                        <div class="stat-number" id="avg-duration">- min</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Most Common Trigger</h3>
+                        <div class="stat-text" id="common-trigger">-</div>
+                    </div>
+                </div>
+
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3>Severity Distribution</h3>
+                        <canvas id="severity-chart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Monthly Trends</h3>
+                        <canvas id="trends-chart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Trigger Frequency</h3>
+                        <canvas id="triggers-chart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Duration Analysis</h3>
+                        <div class="duration-stats">
+                            <div class="duration-stat">
+                                <span class="stat-label">Min:</span>
+                                <span id="min-duration">- min</span>
+                            </div>
+                            <div class="duration-stat">
+                                <span class="stat-label">Max:</span>
+                                <span id="max-duration">- min</span>
+                            </div>
+                            <div class="duration-stat">
+                                <span class="stat-label">Median:</span>
+                                <span id="median-duration">- min</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Episode History Tab -->
         <div id="history-tab" class="tab-content">
             <div class="card">
@@ -103,7 +166,10 @@
             <div class="card">
                 <h2>Export Data</h2>
                 <p>Download your episode data for medical consultation</p>
-                <button id="export-csv" class="btn-primary">Download CSV</button>
+                <div class="export-options">
+                    <button id="export-csv" class="btn-primary">Download CSV</button>
+                    <button id="export-pdf" class="btn-secondary">Download Medical Report (PDF)</button>
+                </div>
             </div>
         </div>
     </div>

@@ -59,3 +59,49 @@ pub struct EpisodeUpdate {
     pub notes: Option<String>,
     pub ai_analysis: Option<String>,
 }
+
+#[derive(Serialize, Debug)]
+pub struct AnalyticsData {
+    pub total_episodes: i64,
+    pub average_severity: f32,
+    pub severity_distribution: Vec<SeverityCount>,
+    pub trigger_frequency: Vec<TriggerCount>,
+    pub monthly_trends: Vec<MonthlyTrend>,
+    pub duration_stats: DurationStats,
+}
+
+#[derive(Serialize, Debug)]
+pub struct SeverityCount {
+    pub severity: i32,
+    pub count: i64,
+}
+
+#[derive(Serialize, Debug)]
+pub struct TriggerCount {
+    pub trigger: String,
+    pub count: i64,
+}
+
+#[derive(Serialize, Debug)]
+pub struct MonthlyTrend {
+    pub month: String,
+    pub episode_count: i64,
+    pub average_severity: f32,
+}
+
+#[derive(Serialize, Debug)]
+pub struct DurationStats {
+    pub average_minutes: f32,
+    pub median_minutes: i32,
+    pub max_minutes: i32,
+    pub min_minutes: i32,
+}
+
+#[derive(Serialize, Debug)]
+pub struct PatternAnalysis {
+    pub common_triggers: Vec<String>,
+    pub severity_patterns: Vec<String>,
+    pub time_patterns: Vec<String>,
+    pub recommendations: Vec<String>,
+    pub risk_factors: Vec<String>,
+}

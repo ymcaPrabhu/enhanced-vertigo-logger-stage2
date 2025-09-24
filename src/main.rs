@@ -3,6 +3,7 @@ mod schema;
 mod database;
 mod handlers;
 mod ai_service;
+mod pdf_generator;
 
 use axum::{
     http::Method,
@@ -43,6 +44,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/episodes/:id", delete(handlers::delete_episode))
         .route("/api/analyze", post(handlers::analyze_episode))
         .route("/api/export", get(handlers::export_episodes))
+        .route("/api/analytics", get(handlers::get_analytics))
+        .route("/api/patterns", get(handlers::get_patterns))
+        .route("/api/report/pdf", get(handlers::generate_pdf_report))
         .with_state(app_state);
 
     let static_files = ServeDir::new("static").fallback(

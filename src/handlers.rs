@@ -8,7 +8,8 @@ use std::sync::{Arc, Mutex};
 
 use crate::ai_service::AIService;
 use crate::database::{self, DbConnection};
-use crate::models::{Episode, NewEpisode, EpisodeUpdate, AnalysisRequest, AnalysisResponse};
+use crate::models::{Episode, NewEpisode, EpisodeUpdate, AnalysisRequest, AnalysisResponse, AnalyticsData, PatternAnalysis};
+use crate::pdf_generator::PDFReportGenerator;
 
 pub type AppState = Arc<Mutex<DbConnection>>;
 
@@ -127,4 +128,62 @@ pub async fn export_episodes(
     }
 
     Ok(csv)
+}
+
+pub async fn get_analytics(
+    State(db): State<AppState>,
+) -> Result<Json<AnalyticsData>, StatusCode> {
+    let mut conn = db.lock().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let analytics = database::get_analytics_data(&mut conn)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json(analytics))
+}
+
+pub async fn get_patterns(
+    State(db): State<AppState>,
+) -> Result<Json<PatternAnalysis>, StatusCode> {
+    let mut conn = db.lock().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let episodes = database::get_all_episodes(&mut conn)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let ai_service = AIService::new()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let patterns = ai_service.analyze_patterns(&episodes)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json(patterns))
+}
+
+pub async fn generate_pdf_report(
+    State(db): State<AppState>,
+) -> Result<axum::response::Response, StatusCode> {
+    let mut conn = db.lock().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let episodes = database::get_all_episodes(&mut conn)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let analytics = database::get_analytics_data(&mut conn)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let ai_service = AIService::new()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let patterns = ai_service.analyze_patterns(&episodes)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let pdf_bytes = PDFReportGenerator::generate_medical_report(&episodes, &analytics, &patterns)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let filename = format!("vertigo-medical-report-{}.pdf",
+        chrono::Utc::now().format("%Y-%m-%d"));
+
+    Ok(axum::response::Response::builder()
+        .header("Content-Type", "application/pdf")
+        .header("Content-Disposition", format!("attachment; filename=\"{}\"", filename))
+        .body(axum::body::Body::from(pdf_bytes))
+        .unwrap())
 }
