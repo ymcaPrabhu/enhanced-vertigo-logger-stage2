@@ -1,6 +1,6 @@
 class VertigoLogger {
     constructor() {
-        this.apiBase = '';
+        this.apiBase = '/.netlify/functions/api';
         this.recognition = null;
         this.isRecording = false;
         this.init();
@@ -115,7 +115,7 @@ class VertigoLogger {
         }
 
         try {
-            const response = await fetch(`${this.apiBase}/api/episodes`, {
+            const response = await fetch(`${this.apiBase}/episodes`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -156,7 +156,7 @@ class VertigoLogger {
         try {
             this.showStatus('Analyzing with AI...', 'info');
 
-            const response = await fetch(`${this.apiBase}/api/analyze`, {
+            const response = await fetch(`${this.apiBase}/analyze`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -200,7 +200,7 @@ class VertigoLogger {
 
     async loadEpisodes() {
         try {
-            const response = await fetch(`${this.apiBase}/api/episodes`);
+            const response = await fetch(`${this.apiBase}/episodes`);
             if (response.ok) {
                 const episodes = await response.json();
                 this.displayEpisodes(episodes);
@@ -252,7 +252,7 @@ class VertigoLogger {
         try {
             this.showStatus('Generating export...', 'info');
 
-            const response = await fetch(`${this.apiBase}/api/export`);
+            const response = await fetch(`${this.apiBase}/export`);
             if (response.ok) {
                 const csvData = await response.text();
                 this.downloadCSV(csvData);
@@ -308,7 +308,7 @@ class VertigoLogger {
 
     async loadAnalytics() {
         try {
-            const response = await fetch(`${this.apiBase}/api/analytics`);
+            const response = await fetch(`${this.apiBase}/analytics`);
             if (response.ok) {
                 const analytics = await response.json();
                 this.displayAnalytics(analytics);
@@ -497,7 +497,7 @@ class VertigoLogger {
         try {
             this.showStatus('Generating medical report...', 'info');
 
-            const response = await fetch(`${this.apiBase}/api/report/pdf`);
+            const response = await fetch(`${this.apiBase}/report/pdf`);
             if (response.ok) {
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);

@@ -88,6 +88,10 @@ exports.handler = async (event, context) => {
         response = await handleExportEpisodes();
         break;
 
+      case path === '/report/pdf' && method === 'GET':
+        response = await handleGeneratePDFReport();
+        break;
+
       default:
         response = {
           statusCode: 404,
@@ -382,6 +386,43 @@ async function handleExportEpisodes() {
     return {
       statusCode: 200,
       body: JSON.stringify(result.rows),
+    };
+  } finally {
+    client.release();
+  }
+}
+
+async function handleGeneratePDFReport() {
+  // Simple PDF report functionality - would normally use a PDF library
+  // For now, return a simple text-based report
+  const client = await pool.connect();
+  try {
+    const result = await client.query('SELECT * FROM episodes ORDER BY timestamp DESC');
+    const episodes = result.rows;
+
+    let reportText = 'VERTIGO EPISODES MEDICAL REPORT\n';
+    reportText += '================================\n\n';
+    reportText += `Generated: ${new Date().toISOString()}\n`;
+    reportText += `Total Episodes: ${episodes.length}\n\n`;
+
+    episodes.forEach((episode, index) => {
+      reportText += `Episode ${index + 1}:\n`;
+      reportText += `Date: ${new Date(episode.timestamp).toLocaleString()}\n`;
+      reportText += `Severity: ${episode.severity}/5\n`;
+      if (episode.duration_minutes) reportText += `Duration: ${episode.duration_minutes} minutes\n`;
+      if (episode.symptoms) reportText += `Symptoms: ${episode.symptoms}\n`;
+      if (episode.triggers) reportText += `Triggers: ${episode.triggers}\n`;
+      if (episode.notes) reportText += `Notes: ${episode.notes}\n`;
+      reportText += '\n';
+    });
+
+    return {
+      statusCode: 200,
+      headers: {
+        'Content-Type': 'text/plain',
+        'Content-Disposition': 'attachment; filename="vertigo-report.txt"'
+      },
+      body: reportText,
     };
   } finally {
     client.release();
