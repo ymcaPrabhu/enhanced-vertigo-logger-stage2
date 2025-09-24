@@ -330,25 +330,91 @@ async function handleAnalyzeEpisode(data) {
 async function handleGetAnalytics() {
   const client = await pool.connect();
   try {
-    const [totalResult, avgSeverityResult, commonTriggersResult] = await Promise.all([
+    // Execute all queries in parallel for better performance
+    const [
+      totalResult,
+      avgSeverityResult,
+      durationStatsResult,
+      severityDistResult,
+      triggerFreqResult,
+      monthlyTrendsResult
+    ] = await Promise.all([
       client.query('SELECT COUNT(*) as total FROM episodes'),
       client.query('SELECT AVG(severity) as avg_severity FROM episodes'),
       client.query(`
-        SELECT triggers, COUNT(*) as count
+        SELECT
+          AVG(duration_minutes) as average_minutes,
+          MIN(duration_minutes) as min_minutes,
+          MAX(duration_minutes) as max_minutes,
+          PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY duration_minutes) as median_minutes
         FROM episodes
-        WHERE triggers IS NOT NULL AND triggers != ''
-        GROUP BY triggers
-        ORDER BY count DESC
-        LIMIT 5
+        WHERE duration_minutes IS NOT NULL
       `),
+      client.query(`
+        SELECT severity, COUNT(*) as count
+        FROM episodes
+        GROUP BY severity
+        ORDER BY severity
+      `),
+      client.query(`
+        SELECT
+          COALESCE(NULLIF(triggers, ''), 'No trigger specified') as trigger,
+          COUNT(*) as count
+        FROM episodes
+        GROUP BY triggers
+        HAVING COUNT(*) > 0
+        ORDER BY count DESC
+        LIMIT 10
+      `),
+      client.query(`
+        SELECT
+          TO_CHAR(timestamp, 'YYYY-MM') as month,
+          COUNT(*) as episode_count,
+          AVG(severity) as average_severity
+        FROM episodes
+        GROUP BY TO_CHAR(timestamp, 'YYYY-MM')
+        ORDER BY month DESC
+        LIMIT 12
+      `)
     ]);
+
+    // Process duration stats
+    const durationStats = durationStatsResult.rows[0];
+    const duration_stats = {
+      average_minutes: parseFloat(durationStats.average_minutes || 0),
+      min_minutes: parseInt(durationStats.min_minutes || 0),
+      max_minutes: parseInt(durationStats.max_minutes || 0),
+      median_minutes: parseFloat(durationStats.median_minutes || 0)
+    };
+
+    // Process severity distribution
+    const severity_distribution = severityDistResult.rows.map(row => ({
+      severity: parseInt(row.severity),
+      count: parseInt(row.count)
+    }));
+
+    // Process trigger frequency
+    const trigger_frequency = triggerFreqResult.rows.map(row => ({
+      trigger: row.trigger,
+      count: parseInt(row.count)
+    }));
+
+    // Process monthly trends
+    const monthly_trends = monthlyTrendsResult.rows.map(row => ({
+      month: row.month,
+      episode_count: parseInt(row.episode_count),
+      average_severity: parseFloat(row.average_severity)
+    }));
 
     return {
       statusCode: 200,
       body: JSON.stringify({
         total_episodes: parseInt(totalResult.rows[0].total),
-        average_severity: parseFloat(avgSeverityResult.rows[0].avg_severity || 0).toFixed(2),
-        common_triggers: commonTriggersResult.rows,
+        average_severity: parseFloat(avgSeverityResult.rows[0].avg_severity || 0),
+        duration_stats,
+        severity_distribution,
+        trigger_frequency,
+        monthly_trends
       }),
     };
   } finally {
@@ -383,9 +449,37 @@ async function handleExportEpisodes() {
   const client = await pool.connect();
   try {
     const result = await client.query('SELECT * FROM episodes ORDER BY timestamp DESC');
+    const episodes = result.rows;
+
+    // Convert to CSV format
+    const headers = ['ID', 'Timestamp', 'Duration (min)', 'Severity', 'Triggers', 'Symptoms', 'Location', 'Activities Before', 'Medications', 'Notes'];
+    let csvContent = headers.join(',') + '\n';
+
+    episodes.forEach(episode => {
+      const row = [
+        episode.id,
+        new Date(episode.timestamp).toISOString(),
+        episode.duration_minutes || '',
+        episode.severity,
+        (episode.triggers || '').replace(/,/g, ';'),
+        (episode.symptoms || '').replace(/,/g, ';'),
+        (episode.location || '').replace(/,/g, ';'),
+        (episode.activities_before || '').replace(/,/g, ';'),
+        (episode.medications_taken || '').replace(/,/g, ';'),
+        (episode.notes || '').replace(/,/g, ';')
+      ];
+      csvContent += row.map(field => `"${field}"`).join(',') + '\n';
+    });
+
     return {
       statusCode: 200,
-      body: JSON.stringify(result.rows),
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'text/csv',
+        'Content-Disposition': `attachment; filename="vertigo-episodes-${new Date().toISOString().split('T')[0]}.csv"`,
+        'Cache-Control': 'no-cache'
+      },
+      body: csvContent,
     };
   } finally {
     client.release();
@@ -419,8 +513,10 @@ async function handleGeneratePDFReport() {
     return {
       statusCode: 200,
       headers: {
-        'Content-Type': 'text/plain',
-        'Content-Disposition': 'attachment; filename="vertigo-report.txt"'
+        ...corsHeaders,
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': 'attachment; filename="vertigo-medical-report.txt"',
+        'Cache-Control': 'no-cache'
       },
       body: reportText,
     };
