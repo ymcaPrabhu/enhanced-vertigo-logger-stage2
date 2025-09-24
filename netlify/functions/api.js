@@ -4,8 +4,8 @@ const { Pool } = require('pg');
 let pool;
 try {
   pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL?.includes('neon.tech') ? {
+    connectionString: process.env.NETLIFY_DATABASE_URL,
+    ssl: process.env.NETLIFY_DATABASE_URL?.includes('neon.tech') ? {
       rejectUnauthorized: false,
       require: true
     } : false,
@@ -123,8 +123,8 @@ async function handleTestDB() {
       statusCode: 500,
       body: JSON.stringify({
         error: 'Database pool not initialized',
-        env_set: !!process.env.DATABASE_URL,
-        env_preview: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 50) + '...' : 'not set'
+        env_set: !!process.env.NETLIFY_DATABASE_URL,
+        env_preview: process.env.NETLIFY_DATABASE_URL ? process.env.NETLIFY_DATABASE_URL.substring(0, 50) + '...' : 'not set'
       }),
     };
   }
@@ -151,7 +151,7 @@ async function handleTestDB() {
         current_time: result.rows[0].current_time,
         pg_version: result.rows[0].pg_version,
         episodes_table_exists: tableCheck.rows.length > 0,
-        env_configured: !!process.env.DATABASE_URL
+        env_configured: !!process.env.NETLIFY_DATABASE_URL
       }),
     };
   } catch (error) {
@@ -162,7 +162,7 @@ async function handleTestDB() {
         error: 'Database connection test failed',
         details: error.message,
         code: error.code,
-        env_set: !!process.env.DATABASE_URL
+        env_set: !!process.env.NETLIFY_DATABASE_URL
       }),
     };
   } finally {
