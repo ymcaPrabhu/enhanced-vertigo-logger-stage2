@@ -1,0 +1,24 @@
+# Ignore build artifacts
+target/
+Cargo.lock
+
+# Ignore git
+.git/
+.gitignore
+
+# Ignore development files
+*.md
+scripts/
+tests/
+vercel-frontend/
+
+# Ignore local database
+vertigo.db
+
+# Ignore documentation
+STAGE*.md
+DEVELOPMENT*.md
+PENDING*.md
+PROGRESS*.md
+TEST*.md
+ACCOUNT*.md

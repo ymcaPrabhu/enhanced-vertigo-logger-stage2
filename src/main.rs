@@ -4,6 +4,7 @@ mod database;
 mod handlers;
 mod ai_service;
 mod pdf_generator;
+mod init;
 
 use axum::{
     http::Method,
@@ -21,10 +22,10 @@ use handlers::AppState;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("🚀 Starting Vertigo Logger Stage 1 MVP...");
+    println!("🚀 Starting Enhanced Vertigo Logger Stage 2...");
 
-    let conn = database::establish_connection()
-        .expect("Failed to connect to database");
+    let conn = init::ensure_database_setup()
+        .expect("Failed to initialize database");
 
     println!("✅ Database connected successfully");
 
@@ -58,13 +59,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .nest_service("/", static_files)
         .layer(ServiceBuilder::new().layer(cors));
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
-        .await
-        .expect("Failed to bind to port 3000");
+    // Use PORT environment variable if available (for Railway/Heroku)
+    let port = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string());
+    let bind_address = format!("0.0.0.0:{}", port);
 
-    println!("🌐 Server running on http://localhost:3000");
-    println!("📱 Web interface available at http://localhost:3000");
-    println!("🔌 API endpoints available at http://localhost:3000/api/*");
+    let listener = tokio::net::TcpListener::bind(&bind_address)
+        .await
+        .expect(&format!("Failed to bind to {}", bind_address));
+
+    println!("🌐 Server running on {}", bind_address);
+    println!("📱 Web interface available at http://0.0.0.0:{}", port);
+    println!("🔌 API endpoints available at http://0.0.0.0:{}/api/*", port);
+    println!("🏥 Enhanced Vertigo Logger Stage 2 - Production Ready!");
 
     axum::serve(listener, app)
         .await
