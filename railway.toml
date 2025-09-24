@@ -1,6 +1,6 @@
 [build]
 builder = "DOCKERFILE"
-dockerfile = "Dockerfile"
+dockerfile = "Dockerfile.railway"
 
 [deploy]
 startCommand = "./vertigo-logger"

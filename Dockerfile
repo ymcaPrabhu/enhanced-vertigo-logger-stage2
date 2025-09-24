@@ -1,17 +1,21 @@
 # Multi-stage Docker build for Vertigo Logger Stage 2
-FROM rust:1.75 as builder
+FROM rust:1.75-slim as builder
 
-# Install system dependencies
+# Install system dependencies including curl for health check
 RUN apt-get update && apt-get install -y \
     libsqlite3-dev \
     pkg-config \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app directory
 WORKDIR /app
 
-# Copy manifests
+# Copy manifests first for better layer caching
 COPY Cargo.toml Cargo.lock ./
+
+# Build dependencies first (this layer will be cached if dependencies don't change)
+RUN mkdir src && echo "fn main() {}" > src/main.rs && cargo build --release && rm -rf src
 
 # Copy source code
 COPY src ./src
@@ -22,14 +26,16 @@ COPY diesel.toml ./
 # Build the application
 RUN cargo build --release
 
-# Runtime stage
+# Runtime stage - use same base for consistency
 FROM debian:bookworm-slim
 
-# Install runtime dependencies
+# Install runtime dependencies including curl for health check
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     libsqlite3-0 \
-    && rm -rf /var/lib/apt/lists/*
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
 # Create app directory
 WORKDIR /app
@@ -40,8 +46,12 @@ COPY --from=builder /app/static ./static
 COPY --from=builder /app/migrations ./migrations
 COPY --from=builder /app/diesel.toml ./
 
-# Create database directory
-RUN mkdir -p /app/data
+# Create database directory and set permissions
+RUN mkdir -p /app/data && chmod 755 /app/data
+
+# Create non-root user for security
+RUN useradd -r -s /bin/false -d /app appuser && chown -R appuser:appuser /app
+USER appuser
 
 # Set environment variables
 ENV DATABASE_URL=/app/data/vertigo.db
@@ -51,8 +61,8 @@ ENV PORT=3000
 # Expose port
 EXPOSE 3000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+# Health check with proper timeout
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:3000/health || exit 1
 
 # Run the binary

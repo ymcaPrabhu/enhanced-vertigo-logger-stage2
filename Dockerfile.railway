@@ -1,0 +1,54 @@
+# Railway-optimized Docker build for Vertigo Logger Stage 2
+FROM rust:1.75-slim as builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    libsqlite3-dev \
+    pkg-config \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy manifest files for dependency caching
+COPY Cargo.toml Cargo.lock ./
+
+# Create dummy main for dependency compilation
+RUN mkdir src && echo "fn main() {}" > src/main.rs && cargo build --release && rm -rf src
+
+# Copy source and build
+COPY src ./src
+COPY static ./static
+COPY migrations ./migrations
+COPY diesel.toml ./
+
+RUN cargo build --release
+
+# Minimal runtime stage
+FROM debian:bookworm-slim
+
+# Install only essential runtime dependencies
+RUN apt-get update && apt-get install -y \
+    libsqlite3-0 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+WORKDIR /app
+
+# Copy artifacts
+COPY --from=builder /app/target/release/vertigo-logger ./
+COPY --from=builder /app/static ./static
+COPY --from=builder /app/migrations ./migrations
+COPY --from=builder /app/diesel.toml ./
+
+# Setup data directory
+RUN mkdir -p /app/data
+
+# Environment configuration
+ENV DATABASE_URL=/app/data/vertigo.db
+ENV RUST_LOG=info
+
+EXPOSE $PORT
+
+CMD ["./vertigo-logger"]
