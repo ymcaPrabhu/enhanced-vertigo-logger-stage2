@@ -318,13 +318,76 @@ async function handleDeleteEpisode(id) {
 }
 
 async function handleAnalyzeEpisode(data) {
-  // Simple analysis since we don't have AI service
-  const analysis = `Analysis for episode: Severity ${data.severity}/5. Triggers: ${data.triggers || 'None specified'}. Symptoms: ${data.symptoms || 'None specified'}.`;
+  const openaiApiKey = process.env.OPENAI_API_KEY;
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ analysis }),
-  };
+  if (!openaiApiKey) {
+    // Fallback to simple analysis if no API key
+    const analysis = `Analysis for episode: Severity ${data.severity}/5. Triggers: ${data.triggers || 'None specified'}. Symptoms: ${data.symptoms || 'None specified'}.`;
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ analysis }),
+    };
+  }
+
+  try {
+    // Call OpenAI API for intelligent analysis
+    const prompt = `As a medical AI assistant, analyze this vertigo episode data and provide insights:
+
+    Severity: ${data.severity}/5
+    Symptoms: ${data.symptoms || 'Not specified'}
+    Triggers: ${data.triggers || 'Not specified'}
+
+    Please provide:
+    1. Possible causes or patterns
+    2. Recommendations for management
+    3. When to seek medical attention
+
+    Keep response concise and informative.`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 300,
+        temperature: 0.7,
+      }),
+    });
+
+    if (response.ok) {
+      const aiResponse = await response.json();
+      const analysis = aiResponse.choices[0].message.content;
+
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          analysis,
+          ai_powered: true,
+          recommendations: analysis.split('\n').filter(line =>
+            line.includes('recommend') || line.includes('suggest') || line.includes('consider')
+          )
+        }),
+      };
+    } else {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+  } catch (error) {
+    console.error('AI Analysis error:', error);
+    // Fallback to simple analysis on API failure
+    const analysis = `Analysis for episode: Severity ${data.severity}/5. Triggers: ${data.triggers || 'None specified'}. Symptoms: ${data.symptoms || 'None specified'}.`;
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        analysis: analysis + " (AI analysis temporarily unavailable)",
+        ai_powered: false
+      }),
+    };
+  }
 }
 
 async function handleGetAnalytics() {
